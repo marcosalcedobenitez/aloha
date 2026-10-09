@@ -1,3 +1,4 @@
+
 import os
 import math
 import secrets
@@ -19,6 +20,13 @@ from flask import (
 from supabase import create_client
 from werkzeug.utils import secure_filename
 
+from servicios.cuenta_admin import (
+    autenticar_administrador,
+    actualizar_credenciales,
+    obtener_configuracion,
+    verificar_hash,
+)
+
 
 load_dotenv()
 
@@ -34,8 +42,6 @@ app.config["SESSION_COOKIE_SECURE"] = (
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 supabase = None
 
@@ -52,6 +58,10 @@ TIPOS_IMAGEN = {
     "webp": "image/webp",
 }
 
+
+# ==================================================
+# FUNCIONES GENERALES
+# ==================================================
 
 def exigir_supabase():
     if supabase is None:
@@ -103,13 +113,20 @@ def validar_csrf():
             token_formulario,
         )
     ):
-        abort(400, description="Formulario de seguridad inválido.")
+        abort(
+            400,
+            description="Formulario de seguridad inválido.",
+        )
 
 
 def administrador_requerido(funcion):
     @wraps(funcion)
     def envoltura(*args, **kwargs):
         if not session.get("administrador"):
+            flash(
+                "Inicia sesión para continuar.",
+                "error",
+            )
             return redirect(url_for("admin_login"))
 
         return funcion(*args, **kwargs)
@@ -121,6 +138,7 @@ def normalizar_producto(producto):
     producto["disponible"] = interpretar_disponibilidad(
         producto.get("disponible")
     )
+
     producto["destacado"] = interpretar_destacado(
         producto.get("destacado", False)
     )
@@ -141,6 +159,10 @@ def normalizar_producto(producto):
 
     return producto
 
+
+# ==================================================
+# PRODUCTOS
+# ==================================================
 
 def obtener_productos():
     exigir_supabase()
@@ -175,6 +197,10 @@ def obtener_producto(producto_id):
     return normalizar_producto(respuesta.data[0])
 
 
+# ==================================================
+# FOTOGRAFÍAS
+# ==================================================
+
 def subir_fotografia(archivo):
     if not archivo or not archivo.filename:
         return None
@@ -198,6 +224,11 @@ def subir_fotografia(archivo):
     if not contenido:
         raise ValueError("La imagen está vacía.")
 
+    if len(contenido) > 5 * 1024 * 1024:
+        raise ValueError(
+            "La imagen supera el límite permitido de 5 MB."
+        )
+
     firmas = {
         "jpg": (b"\xff\xd8\xff",),
         "jpeg": (b"\xff\xd8\xff",),
@@ -210,16 +241,22 @@ def subir_fotografia(archivo):
         for firma in firmas[extension]
     ):
         raise ValueError(
-            "El contenido no coincide con la imagen."
+            "El contenido no coincide con una imagen válida."
         )
 
-    if extension == "webp" and contenido[8:12] != b"WEBP":
+    if (
+        extension == "webp"
+        and (
+            len(contenido) < 12
+            or contenido[8:12] != b"WEBP"
+        )
+    ):
         raise ValueError("El archivo WEBP no es válido.")
+
+    exigir_supabase()
 
     nombre_archivo = f"{uuid4().hex}.{extension}"
     ruta = f"productos/{nombre_archivo}"
-
-    exigir_supabase()
 
     supabase.storage.from_("productos").upload(
         ruta,
@@ -236,12 +273,15 @@ def subir_fotografia(archivo):
 
 
 def eliminar_fotografia_si_es_de_aloha(url_foto):
-    if not url_foto or not SUPABASE_URL or supabase is None:
+    if not url_foto or supabase is None:
         return
 
     try:
         ruta_url = urlparse(url_foto).path
-        prefijo = "/storage/v1/object/public/productos/"
+
+        prefijo = (
+            "/storage/v1/object/public/productos/"
+        )
 
         if prefijo not in ruta_url:
             return
@@ -306,20 +346,15 @@ def inicio():
 
 
 # ==================================================
-# INICIO DE SESIÓN
+# INICIO DE SESIÓN DEL ADMINISTRADOR
 # ==================================================
 
 @app.route("/admin/login", methods=["GET", "POST"])
 @app.route("/login", methods=["GET", "POST"])
 def admin_login():
-    if (
-        not app.secret_key
-        or not ADMIN_USERNAME
-        or not ADMIN_PASSWORD
-    ):
+    if not app.secret_key:
         return (
-            "Falta configurar FLASK_SECRET_KEY, "
-            "ADMIN_USERNAME y ADMIN_PASSWORD en .env.",
+            "Falta configurar FLASK_SECRET_KEY en el archivo .env.",
             500,
         )
 
@@ -327,29 +362,52 @@ def admin_login():
         session.clear()
         generar_csrf()
 
-    if request.method == "POST":
-        validar_csrf()
+        return render_template("admin_login.html")
 
-        usuario = request.form.get("usuario", "")
-        contrasena = request.form.get("contrasena", "")
+    validar_csrf()
 
-        usuario_correcto = secrets.compare_digest(
-            usuario, ADMIN_USERNAME
+    usuario = request.form.get("usuario", "").strip()
+    contrasena = request.form.get("contrasena", "")
+
+    try:
+        exigir_supabase()
+
+        acceso_correcto = autenticar_administrador(
+            supabase,
+            usuario,
+            contrasena,
         )
-        contrasena_correcta = secrets.compare_digest(
-            contrasena, ADMIN_PASSWORD
+
+    except Exception:
+        app.logger.exception(
+            "Error verificando las credenciales administrativas."
         )
 
-        if usuario_correcto and contrasena_correcta:
-            session.clear()
-            session["administrador"] = True
-            session["csrf_token"] = secrets.token_urlsafe(32)
+        flash(
+            "No se pudo verificar la cuenta. "
+            "Comprueba la conexión con Supabase.",
+            "error",
+        )
 
-            return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_login"))
 
-        flash("Usuario o contraseña incorrectos.", "error")
+    if not acceso_correcto:
+        flash(
+            "Usuario o contraseña incorrectos.",
+            "error",
+        )
+        return redirect(url_for("admin_login"))
 
-    return render_template("admin_login.html")
+    session.clear()
+    session["administrador"] = True
+    generar_csrf()
+
+    flash(
+        "¡Bienvenido al panel de Aloha!",
+        "success",
+    )
+
+    return redirect(url_for("admin_dashboard"))
 
 
 # ==================================================
@@ -360,7 +418,9 @@ def admin_login():
 @administrador_requerido
 def admin_logout():
     validar_csrf()
+
     session.clear()
+
     return redirect(url_for("admin_login"))
 
 
@@ -374,7 +434,7 @@ def admin_ruta_no_encontrada():
 
 
 # ==================================================
-# PANEL PROTEGIDO
+# PANEL ADMINISTRATIVO
 # ==================================================
 
 @app.route("/panel")
@@ -388,7 +448,12 @@ def admin_dashboard():
         app.logger.exception(
             "No se pudieron cargar los productos del administrador."
         )
-        flash("No se pudieron cargar los productos.", "error")
+
+        flash(
+            "No se pudieron cargar los productos.",
+            "error",
+        )
+
         productos = []
         error_carga = True
 
@@ -400,27 +465,207 @@ def admin_dashboard():
 
 
 # ==================================================
+# CONFIGURACIÓN DE LA CUENTA ADMINISTRATIVA
+# ==================================================
+
+@app.route(
+    "/panel/configuracion",
+    methods=["GET", "POST"],
+)
+@administrador_requerido
+def admin_configuracion():
+    try:
+        exigir_supabase()
+
+        configuracion = obtener_configuracion(supabase)
+
+    except Exception:
+        app.logger.exception(
+            "No se pudo obtener la configuración administrativa."
+        )
+
+        flash(
+            "No se pudo cargar la configuración de la cuenta.",
+            "error",
+        )
+
+        return redirect(url_for("admin_dashboard"))
+
+    if request.method == "GET":
+        return render_template(
+            "admin_configuracion.html",
+            usuario_actual=configuracion["usuario"],
+        )
+
+    validar_csrf()
+
+    usuario_actual = configuracion["usuario"]
+    contrasena_actual = request.form.get(
+        "contrasena_actual",
+        "",
+    )
+
+    nuevo_usuario = request.form.get(
+        "nuevo_usuario",
+        "",
+    ).strip()
+
+    nueva_contrasena = request.form.get(
+        "nueva_contrasena",
+        "",
+    )
+
+    confirmar_contrasena = request.form.get(
+        "confirmar_contrasena",
+        "",
+    )
+
+    if not verificar_hash(
+        contrasena_actual,
+        configuracion["password_hash"],
+    ):
+        flash(
+            "La contraseña actual es incorrecta.",
+            "error",
+        )
+
+        return render_template(
+            "admin_configuracion.html",
+            usuario_actual=usuario_actual,
+        )
+
+    if len(nuevo_usuario) < 3 or len(nuevo_usuario) > 80:
+        flash(
+            "El usuario debe tener entre 3 y 80 caracteres.",
+            "error",
+        )
+
+        return render_template(
+            "admin_configuracion.html",
+            usuario_actual=usuario_actual,
+        )
+
+    if nueva_contrasena:
+        if len(nueva_contrasena) < 6:
+            flash(
+                "La nueva contraseña debe tener al menos "
+                "6 caracteres.",
+                "error",
+            )
+
+            return render_template(
+                "admin_configuracion.html",
+                usuario_actual=usuario_actual,
+            )
+
+        if len(nueva_contrasena) > 128:
+            flash(
+                "La nueva contraseña no puede superar "
+                "128 caracteres.",
+                "error",
+            )
+
+            return render_template(
+                "admin_configuracion.html",
+                usuario_actual=usuario_actual,
+            )
+
+        if nueva_contrasena != confirmar_contrasena:
+            flash(
+                "Las nuevas contraseñas no coinciden.",
+                "error",
+            )
+
+            return render_template(
+                "admin_configuracion.html",
+                usuario_actual=usuario_actual,
+            )
+
+    elif confirmar_contrasena:
+        flash(
+            "Para confirmar una contraseña, primero "
+            "escribe la nueva contraseña.",
+            "error",
+        )
+
+        return render_template(
+            "admin_configuracion.html",
+            usuario_actual=usuario_actual,
+        )
+
+    try:
+        actualizar_credenciales(
+            supabase,
+            configuracion["id"],
+            nuevo_usuario,
+            nueva_contrasena if nueva_contrasena else None,
+        )
+
+        session.clear()
+
+        flash(
+            "La cuenta se actualizó correctamente. "
+            "Inicia sesión con tus nuevas credenciales.",
+            "success",
+        )
+
+        return redirect(url_for("admin_login"))
+
+    except Exception:
+        app.logger.exception(
+            "No se pudieron actualizar las credenciales."
+        )
+
+        flash(
+            "No se pudo actualizar la cuenta. "
+            "Comprueba que el usuario no esté en uso.",
+            "error",
+        )
+
+        return render_template(
+            "admin_configuracion.html",
+            usuario_actual=usuario_actual,
+        )
+
+
+# ==================================================
 # CREAR PRODUCTO
 # ==================================================
 
-@app.route("/admin/productos/nuevo", methods=["GET", "POST"])
+@app.route(
+    "/admin/productos/nuevo",
+    methods=["GET", "POST"],
+)
 @administrador_requerido
 def admin_producto_nuevo():
     if request.method == "POST":
         validar_csrf()
 
         referencia = request.form.get(
-            "referencia", ""
+            "referencia",
+            "",
         ).strip().upper()
-        nombre = request.form.get("nombre", "").strip()
-        descripcion = request.form.get(
-            "descripcion", ""
-        ).strip()
-        categoria = request.form.get("categoria", "").strip()
-        precio_texto = request.form.get("precio", "").strip()
 
-        # CORREGIDO: el formulario usa value="true".
-        # Si la casilla está desmarcada, el valor será False.
+        nombre = request.form.get(
+            "nombre",
+            "",
+        ).strip()
+
+        descripcion = request.form.get(
+            "descripcion",
+            "",
+        ).strip()
+
+        categoria = request.form.get(
+            "categoria",
+            "",
+        ).strip()
+
+        precio_texto = request.form.get(
+            "precio",
+            "",
+        ).strip()
+
         destacado = interpretar_destacado(
             request.form.get("destacado", False)
         )
@@ -430,6 +675,7 @@ def admin_producto_nuevo():
                 "Referencia, nombre y categoría son obligatorios.",
                 "error",
             )
+
             return render_template(
                 "admin_form.html",
                 modo="nuevo",
@@ -446,7 +692,11 @@ def admin_producto_nuevo():
                 raise ValueError
 
         except (ValueError, TypeError):
-            flash("Introduce un precio válido.", "error")
+            flash(
+                "Introduce un precio válido.",
+                "error",
+            )
+
             return render_template(
                 "admin_form.html",
                 modo="nuevo",
@@ -474,18 +724,29 @@ def admin_producto_nuevo():
                 "destacado": destacado,
             }
 
-            supabase.table("productos").insert(datos).execute()
+            (
+                supabase.table("productos")
+                .insert(datos)
+                .execute()
+            )
 
-            flash("Producto creado correctamente.", "success")
+            flash(
+                "Producto creado correctamente.",
+                "success",
+            )
+
             return redirect(url_for("admin_dashboard"))
 
         except Exception:
             app.logger.exception("Error creando producto.")
+
             flash(
-                "No se pudo crear el producto. Comprueba que "
-                "la referencia no exista y revisa Supabase.",
+                "No se pudo crear el producto. "
+                "Comprueba que la referencia no exista "
+                "y revisa Supabase.",
                 "error",
             )
+
             return render_template(
                 "admin_form.html",
                 modo="nuevo",
@@ -517,15 +778,26 @@ def admin_producto_editar(producto_id):
     if request.method == "POST":
         validar_csrf()
 
-        nombre = request.form.get("nombre", "").strip()
-        descripcion = request.form.get(
-            "descripcion", ""
+        nombre = request.form.get(
+            "nombre",
+            "",
         ).strip()
-        categoria = request.form.get("categoria", "").strip()
-        precio_texto = request.form.get("precio", "").strip()
 
-        # CORREGIDO: interpreta true/on/1 y guarda False
-        # cuando la casilla está desmarcada.
+        descripcion = request.form.get(
+            "descripcion",
+            "",
+        ).strip()
+
+        categoria = request.form.get(
+            "categoria",
+            "",
+        ).strip()
+
+        precio_texto = request.form.get(
+            "precio",
+            "",
+        ).strip()
+
         destacado = interpretar_destacado(
             request.form.get("destacado", False)
         )
@@ -535,6 +807,7 @@ def admin_producto_editar(producto_id):
                 "Nombre y categoría son obligatorios.",
                 "error",
             )
+
             return render_template(
                 "admin_form.html",
                 modo="editar",
@@ -552,7 +825,11 @@ def admin_producto_editar(producto_id):
                 raise ValueError
 
         except (ValueError, TypeError):
-            flash("Introduce un precio válido.", "error")
+            flash(
+                "Introduce un precio válido.",
+                "error",
+            )
+
             return render_template(
                 "admin_form.html",
                 modo="editar",
@@ -562,6 +839,8 @@ def admin_producto_editar(producto_id):
                     "destacado": destacado,
                 },
             )
+
+        fotografia = None
 
         try:
             fotografia = subir_fotografia(
@@ -593,16 +872,29 @@ def admin_producto_editar(producto_id):
                     producto.get("foto")
                 )
 
-            flash("Producto actualizado correctamente.", "success")
+            flash(
+                "Producto actualizado correctamente.",
+                "success",
+            )
+
             return redirect(url_for("admin_dashboard"))
 
         except Exception:
             app.logger.exception("Error editando producto.")
+
+            # Si la actualización falla después de subir una
+            # fotografía, intentamos retirar la nueva imagen.
+            if fotografia:
+                eliminar_fotografia_si_es_de_aloha(
+                    fotografia
+                )
+
             flash(
                 "No se pudo actualizar el producto. "
                 "Revisa Supabase y Storage.",
                 "error",
             )
+
             return render_template(
                 "admin_form.html",
                 modo="editar",
@@ -633,22 +925,31 @@ def admin_producto_disponibilidad(producto_id):
     validar_csrf()
 
     try:
+        exigir_supabase()
+
         producto = obtener_producto(producto_id)
+
         nueva_disponibilidad = not producto["disponible"]
 
         (
             supabase.table("productos")
-            .update({"disponible": nueva_disponibilidad})
+            .update({
+                "disponible": nueva_disponibilidad,
+            })
             .eq("id", producto_id)
             .execute()
         )
 
-        flash("Disponibilidad actualizada.", "success")
+        flash(
+            "Disponibilidad actualizada.",
+            "success",
+        )
 
     except Exception:
         app.logger.exception(
             "Error cambiando disponibilidad."
         )
+
         flash(
             "No se pudo cambiar la disponibilidad.",
             "error",
@@ -670,6 +971,8 @@ def admin_producto_eliminar(producto_id):
     validar_csrf()
 
     try:
+        exigir_supabase()
+
         producto = obtener_producto(producto_id)
 
         (
@@ -689,7 +992,10 @@ def admin_producto_eliminar(producto_id):
         )
 
     except Exception:
-        app.logger.exception("Error eliminando producto.")
+        app.logger.exception(
+            "Error eliminando producto."
+        )
+
         flash(
             "No se pudo eliminar el producto. "
             "Comprueba los permisos de Supabase.",
@@ -711,6 +1017,10 @@ def archivo_demasiado_grande(_error):
         413,
     )
 
+
+# ==================================================
+# INICIAR ALOHA
+# ==================================================
 
 if __name__ == "__main__":
     if not app.secret_key:

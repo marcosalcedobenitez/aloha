@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración de cuenta | Aloha</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 24px 14px;
+            background: #f6f4ef;
+            color: #252525;
+            font-family: Arial, sans-serif;
+        }
+
+        main {
+            width: 100%;
+            max-width: 580px;
+            margin: 20px auto;
+            padding: 28px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 25px #0000000a;
+        }
+
+        .brand {
+            color: #c77b16;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .muted {
+            color: #777;
+            line-height: 1.6;
+        }
+
+        .section-title {
+            margin-top: 28px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee8df;
+        }
+
+        label {
+            display: block;
+            margin: 18px 0 7px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid #ddd;
+            border-radius: 9px;
+            font: inherit;
+        }
+
+        input:focus {
+            outline: 2px solid #c77b1644;
+            border-color: #c77b16;
+        }
+
+        .help {
+            margin-top: 7px;
+            color: #777;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .security-note {
+            margin-top: 22px;
+            padding: 14px;
+            border-radius: 10px;
+            background: #fff8ec;
+            color: #76501c;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .messages {
+            margin-top: 18px;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 12px;
+            border-radius: 8px;
+            line-height: 1.5;
+        }
+
+        .message.error {
+            background: #fff0ed;
+            color: #9b2c1b;
+        }
+
+        .message.success {
+            background: #eaf7ed;
+            color: #246b35;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 26px;
+        }
+
+        button,
+        .back {
+            display: inline-block;
+            padding: 13px 17px;
+            border: 0;
+            border-radius: 9px;
+            background: #c77b16;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .back {
+            background: #333;
+        }
+
+        button:hover {
+            background: #aa6811;
+        }
+
+        @media (max-width: 480px) {
+            main {
+                padding: 22px 17px;
+            }
+
+            .actions > * {
+                flex: 1;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <div class="brand">ALOHA · ADMIN</div>
+
+        <h1>Configuración de cuenta</h1>
+
+        <p class="muted">
+            Cambia tu usuario o contraseña de administrador.
+            Para guardar cualquier cambio, debes verificar
+            tu contraseña actual.
+        </p>
+
+        <div class="messages">
+            {% for categoria, mensaje in get_flashed_messages(with_categories=true) %}
+                <div class="message {{ categoria }}">
+                    {{ mensaje }}
+                </div>
+            {% endfor %}
+        </div>
+
+        <form method="POST">
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token() }}"
+            >
+
+            <h3 class="section-title">Nombre de usuario</h3>
+
+            <label for="nuevo_usuario">
+                Nuevo nombre de usuario
+            </label>
+
+            <input
+                id="nuevo_usuario"
+                name="nuevo_usuario"
+                type="text"
+                value="{{ usuario_actual }}"
+                autocomplete="username"
+                minlength="3"
+                maxlength="80"
+                required
+            >
+
+            <h3 class="section-title">Cambiar contraseña</h3>
+
+            <label for="contrasena_actual">
+                Contraseña actual
+            </label>
+
+            <input
+                id="contrasena_actual"
+                name="contrasena_actual"
+                type="password"
+                autocomplete="current-password"
+                required
+            >
+
+            <label for="nueva_contrasena">
+                Nueva contraseña
+            </label>
+
+            <input
+                id="nueva_contrasena"
+                name="nueva_contrasena"
+                type="password"
+                autocomplete="new-password"
+                minlength="6"
+                maxlength="128"
+            >
+
+            <p class="help">
+                Déjala vacía si solamente quieres cambiar el usuario.
+                Si cambias la contraseña, utiliza al menos 6 caracteres.
+            </p>
+
+            <label for="confirmar_contrasena">
+                Confirmar nueva contraseña
+            </label>
+
+            <input
+                id="confirmar_contrasena"
+                name="confirmar_contrasena"
+                type="password"
+                autocomplete="new-password"
+                minlength="6"
+                maxlength="128"
+            >
+
+            <div class="security-note">
+                🔐 Si la contraseña actual es incorrecta,
+                no se guardará ningún cambio. Las contraseñas
+                se almacenarán mediante un hash seguro.
+            </div>
+
+            <div class="actions">
+                <button type="submit">
+                    Guardar configuración
+                </button>
+
+                <a class="back" href="{{ url_for('admin_dashboard') }}">
+                    Volver al panel
+                </a>
+            </div>
+        </form>
+    </main>
+</body>
+</html>

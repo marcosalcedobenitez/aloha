@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,7 +7,9 @@
     <title>Productos | Aloha</title>
 
     <style>
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
         body {
             margin: 0;
@@ -21,7 +24,7 @@
             align-items: center;
             gap: 15px;
             flex-wrap: wrap;
-            padding: 20px max(20px, calc((100% - 1100px) / 2));
+            padding: 18px max(20px, calc((100% - 1100px) / 2));
             background: white;
             border-bottom: 1px solid #eee;
         }
@@ -30,6 +33,7 @@
             color: #c77b16;
             font-weight: bold;
             letter-spacing: 2px;
+            font-size: 17px;
         }
 
         main {
@@ -47,13 +51,21 @@
             margin-bottom: 22px;
         }
 
-        h1 { margin-bottom: 6px; }
+        h1 {
+            margin-bottom: 6px;
+        }
 
-        .muted { color: #777; }
+        .muted {
+            color: #777;
+        }
 
-        a { color: inherit; text-decoration: none; }
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
 
-        .button, button {
+        .button,
+        button {
             display: inline-block;
             padding: 11px 15px;
             border: 0;
@@ -63,9 +75,13 @@
             font-weight: bold;
             cursor: pointer;
             font-size: 14px;
+            text-align: center;
+            font-family: inherit;
         }
 
-        .secondary { background: #333; }
+        .secondary {
+            background: #333;
+        }
 
         .outline {
             background: white;
@@ -78,11 +94,25 @@
             color: white;
         }
 
-        .logout { margin: 0; }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 9px;
+            flex-wrap: wrap;
+        }
 
-        .logout button { background: #333; }
+        .logout {
+            margin: 0;
+        }
 
-        .messages { margin-bottom: 18px; }
+        .logout button {
+            background: #333;
+        }
+
+        .messages {
+            margin-bottom: 18px;
+        }
 
         .message {
             margin-bottom: 8px;
@@ -145,7 +175,8 @@
             min-width: 900px;
         }
 
-        th, td {
+        th,
+        td {
             padding: 14px;
             text-align: left;
             border-bottom: 1px solid #eee;
@@ -202,9 +233,12 @@
             flex-wrap: wrap;
         }
 
-        .actions form { margin: 0; }
+        .actions form {
+            margin: 0;
+        }
 
-        .actions button, .actions a {
+        .actions button,
+        .actions a {
             white-space: nowrap;
         }
 
@@ -226,15 +260,37 @@
         }
 
         @media (max-width: 600px) {
-            main { padding: 22px 12px; }
+            main {
+                padding: 22px 12px;
+            }
 
-            header { padding: 16px; }
+            header {
+                padding: 16px;
+                align-items: flex-start;
+            }
 
-            .top { align-items: stretch; }
+            .header-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
 
-            .top > a { text-align: center; }
+            .header-actions .button,
+            .header-actions form,
+            .header-actions button {
+                flex: 1;
+            }
 
-            .search-panel { padding: 14px; }
+            .top {
+                align-items: stretch;
+            }
+
+            .top > a {
+                text-align: center;
+            }
+
+            .search-panel {
+                padding: 14px;
+            }
         }
     </style>
 </head>
@@ -243,8 +299,15 @@
     <header>
         <div class="brand">ALOHA · ADMIN</div>
 
-        <div class="actions">
-            <a class="button outline" href="/">Ver tienda</a>
+        <nav class="header-actions" aria-label="Navegación administrativa">
+            <a class="button outline" href="/">
+                Ver tienda
+            </a>
+
+            <a class="button outline"
+               href="{{ url_for('admin_configuracion') }}">
+                Configuración
+            </a>
 
             <form class="logout"
                   method="POST"
@@ -252,9 +315,12 @@
                 <input type="hidden"
                        name="csrf_token"
                        value="{{ csrf_token() }}">
-                <button type="submit">Cerrar sesión</button>
+
+                <button type="submit">
+                    Cerrar sesión
+                </button>
             </form>
-        </div>
+        </nav>
     </header>
 
     <main>
@@ -355,9 +421,13 @@
 
                                 <td>
                                     {% if producto.disponible %}
-                                        <span class="status">Disponible</span>
+                                        <span class="status">
+                                            Disponible
+                                        </span>
                                     {% else %}
-                                        <span class="status off">No disponible</span>
+                                        <span class="status off">
+                                            No disponible
+                                        </span>
                                     {% endif %}
                                 </td>
 
@@ -433,9 +503,11 @@
 
     <script>
         const searchInput = document.getElementById("adminSearch");
+
         const productRows = Array.from(
             document.querySelectorAll(".product-row")
         );
+
         const searchInfo = document.getElementById("searchInfo");
         const noResults = document.getElementById("noResults");
 
