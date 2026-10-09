@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>
+        {% if modo == 'nuevo' %}Nuevo producto{% else %}Editar producto{% endif %} | Aloha
+    </title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 22px 14px;
+            background: #f6f4ef;
+            color: #252525;
+            font-family: Arial, sans-serif;
+        }
+
+        main {
+            max-width: 680px;
+            margin: 20px auto;
+            padding: 28px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 25px #0000000a;
+        }
+
+        .brand {
+            color: #c77b16;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .muted {
+            color: #777;
+            line-height: 1.5;
+        }
+
+        label {
+            display: block;
+            margin: 17px 0 7px;
+            font-weight: bold;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font: inherit;
+            background: white;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        input[type="file"] {
+            background: #fafafa;
+        }
+
+        input[readonly] {
+            background: #f2f2f2;
+            color: #555;
+        }
+
+        .help {
+            margin-top: 6px;
+            color: #777;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .preview {
+            width: 100%;
+            max-height: 240px;
+            object-fit: contain;
+            margin-top: 12px;
+        }
+
+        .options {
+            display: grid;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .option {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 15px;
+            border: 1px solid #e8e1d7;
+            border-radius: 10px;
+            background: #fffdf9;
+            cursor: pointer;
+        }
+
+        .option input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            margin: 2px 0 0;
+            accent-color: #c77b16;
+            cursor: pointer;
+        }
+
+        .option-text {
+            line-height: 1.5;
+        }
+
+        .option-text strong {
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .option-text span {
+            color: #777;
+            font-size: 13px;
+            font-weight: normal;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 25px;
+        }
+
+        button,
+        .back {
+            display: inline-block;
+            padding: 12px 16px;
+            border: 0;
+            border-radius: 8px;
+            background: #c77b16;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .back {
+            background: #333;
+        }
+
+        .message {
+            padding: 12px;
+            margin-top: 12px;
+            border-radius: 8px;
+            background: #fff0ed;
+            color: #9b2c1b;
+        }
+
+        @media (max-width: 480px) {
+            main {
+                padding: 20px 16px;
+            }
+
+            .actions > * {
+                text-align: center;
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <div class="brand">ALOHA · ADMIN</div>
+
+        <h1>
+            {% if modo == 'nuevo' %}
+                Nuevo producto
+            {% else %}
+                Editar producto
+            {% endif %}
+        </h1>
+
+        <p class="muted">
+            {% if modo == 'nuevo' %}
+                Completa los datos para añadir un producto a la carta.
+            {% else %}
+                Modifica los datos del producto. Su referencia se conserva.
+            {% endif %}
+        </p>
+
+        {% for categoria, mensaje in get_flashed_messages(with_categories=true) %}
+            <div class="message">{{ mensaje }}</div>
+        {% endfor %}
+
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <label for="referencia">Referencia única</label>
+            <input
+                id="referencia"
+                name="referencia"
+                value="{{ producto.get('referencia', '') }}"
+                {% if modo == 'editar' %}readonly{% else %}required{% endif %}
+                maxlength="60"
+            >
+
+            {% if modo == 'editar' %}
+                <p class="help">La referencia no se puede modificar.</p>
+            {% else %}
+                <p class="help">
+                    Ejemplo: ALO-BUR-003. No utilices referencias de otros productos.
+                </p>
+            {% endif %}
+
+            <label for="nombre">Nombre del producto</label>
+            <input
+                id="nombre"
+                name="nombre"
+                value="{{ producto.get('nombre', '') }}"
+                required
+                maxlength="120"
+            >
+
+            <label for="descripcion">Descripción</label>
+            <textarea
+                id="descripcion"
+                name="descripcion"
+                maxlength="1500"
+            >{{ producto.get('descripcion', '') }}</textarea>
+
+            <label for="precio">Precio en pesos colombianos (COP)</label>
+            <input
+                id="precio"
+                name="precio"
+                type="number"
+                min="0"
+                step="1"
+                value="{{ producto.get('precio', '') }}"
+                required
+            >
+
+            <label for="categoria">Categoría</label>
+            <input
+                id="categoria"
+                name="categoria"
+                value="{{ producto.get('categoria', '') }}"
+                list="categorias"
+                required
+                maxlength="80"
+                autocomplete="off"
+            >
+
+            <datalist id="categorias">
+                <option value="Hamburguesas">
+                <option value="Perros calientes">
+                <option value="Salchipapas">
+                <option value="Acompañamientos">
+                <option value="Bebidas">
+                <option value="Combos">
+            </datalist>
+
+            <p class="help">
+                Escribe una categoría o selecciona una sugerencia.
+                Para que aparezca en el filtro 🍟 Combos, utiliza exactamente
+                la categoría Combos.
+            </p>
+
+            <div class="options">
+                <label class="option" for="destacado">
+                    <input
+                        type="checkbox"
+                        id="destacado"
+                        name="destacado"
+                        value="true"
+                        {% if producto.get('destacado', false) %}checked{% endif %}
+                    >
+
+                    <span class="option-text">
+                        <strong>⭐ Producto destacado</strong>
+                        <span>
+                            Activa esta opción para que el producto aparezca
+                            en el filtro de productos destacados.
+                        </span>
+                    </span>
+                </label>
+            </div>
+
+            <label for="foto">Fotografía del producto</label>
+            <input
+                id="foto"
+                name="foto"
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+            >
+
+            <p class="help">
+                Formatos JPG, PNG o WEBP. Máximo 5 MB.
+                Si editas un producto y no subes otra imagen,
+                se conserva la actual.
+            </p>
+
+            {% if producto.get('foto') %}
+                <img
+                    class="preview"
+                    src="{{ producto.get('foto') }}"
+                    alt="Fotografía actual de {{ producto.get('nombre', 'producto') }}"
+                >
+            {% endif %}
+
+            <div class="actions">
+                <button type="submit">
+                    {% if modo == 'nuevo' %}
+                        Guardar producto
+                    {% else %}
+                        Guardar cambios
+                    {% endif %}
+                </button>
+
+                <a class="back" href="{{ url_for('admin_dashboard') }}">
+                    Volver
+                </a>
+            </div>
+        </form>
+    </main>
+</body>
+</html>

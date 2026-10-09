@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productos | Aloha</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: #f6f4ef;
+            color: #252525;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            padding: 20px max(20px, calc((100% - 1100px) / 2));
+            background: white;
+            border-bottom: 1px solid #eee;
+        }
+
+        .brand {
+            color: #c77b16;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: auto;
+            padding: 28px 18px;
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+        }
+
+        h1 { margin-bottom: 6px; }
+
+        .muted { color: #777; }
+
+        a { color: inherit; text-decoration: none; }
+
+        .button, button {
+            display: inline-block;
+            padding: 11px 15px;
+            border: 0;
+            border-radius: 8px;
+            background: #c77b16;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .secondary { background: #333; }
+
+        .outline {
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .danger {
+            background: #b42318;
+            color: white;
+        }
+
+        .logout { margin: 0; }
+
+        .logout button { background: #333; }
+
+        .messages { margin-bottom: 18px; }
+
+        .message {
+            margin-bottom: 8px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #e9f7ed;
+            color: #215d31;
+        }
+
+        .message.error {
+            background: #fff0ed;
+            color: #9b2c1b;
+        }
+
+        .search-panel {
+            margin-bottom: 18px;
+            padding: 18px;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 4px 20px #00000008;
+        }
+
+        .search-label {
+            display: block;
+            margin-bottom: 9px;
+            font-weight: bold;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 13px 14px;
+            border: 1px solid #d8d5ce;
+            border-radius: 8px;
+            background: #fff;
+            color: #252525;
+            font-size: 16px;
+        }
+
+        .search-input:focus {
+            outline: 2px solid #c77b16;
+            outline-offset: 2px;
+        }
+
+        .search-info {
+            margin-top: 10px;
+            color: #777;
+            font-size: 13px;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px #00000008;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 900px;
+        }
+
+        th, td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .product {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .product img {
+            width: 55px;
+            height: 55px;
+            object-fit: cover;
+            border-radius: 9px;
+        }
+
+        .placeholder {
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+            width: 55px;
+            height: 55px;
+            border-radius: 9px;
+            background: #f6f4ef;
+            font-size: 25px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            background: #e9f7ed;
+            color: #215d31;
+        }
+
+        .status.off {
+            background: #eee;
+            color: #555;
+        }
+
+        .actions {
+            display: flex;
+            gap: 7px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .actions form { margin: 0; }
+
+        .actions button, .actions a {
+            white-space: nowrap;
+        }
+
+        .no-results {
+            display: none;
+            margin-top: 18px;
+            padding: 25px 18px;
+            border-radius: 12px;
+            background: white;
+            color: #666;
+            text-align: center;
+        }
+
+        .empty-message {
+            padding: 25px 18px;
+            border-radius: 12px;
+            background: white;
+            color: #666;
+        }
+
+        @media (max-width: 600px) {
+            main { padding: 22px 12px; }
+
+            header { padding: 16px; }
+
+            .top { align-items: stretch; }
+
+            .top > a { text-align: center; }
+
+            .search-panel { padding: 14px; }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="brand">ALOHA · ADMIN</div>
+
+        <div class="actions">
+            <a class="button outline" href="/">Ver tienda</a>
+
+            <form class="logout"
+                  method="POST"
+                  action="{{ url_for('admin_logout') }}">
+                <input type="hidden"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}">
+                <button type="submit">Cerrar sesión</button>
+            </form>
+        </div>
+    </header>
+
+    <main>
+        <div class="top">
+            <div>
+                <h1>Productos</h1>
+                <div class="muted">
+                    Gestiona la carta de Aloha desde aquí.
+                </div>
+            </div>
+
+            <a class="button"
+               href="{{ url_for('admin_producto_nuevo') }}">
+                + Nuevo producto
+            </a>
+        </div>
+
+        <div class="messages">
+            {% for categoria, mensaje in get_flashed_messages(with_categories=true) %}
+                <div class="message {% if categoria == 'error' %}error{% endif %}">
+                    {{ mensaje }}
+                </div>
+            {% endfor %}
+        </div>
+
+        {% if error_carga %}
+            <div class="message error">
+                No se pudieron consultar los productos de Supabase.
+                Revisa la terminal de PyCharm para ver el error.
+            </div>
+        {% endif %}
+
+        {% if productos %}
+            <section class="search-panel">
+                <label class="search-label" for="adminSearch">
+                    Buscar productos
+                </label>
+
+                <input
+                    id="adminSearch"
+                    class="search-input"
+                    type="search"
+                    placeholder="Escribe el nombre o la referencia..."
+                    autocomplete="off"
+                >
+
+                <div class="search-info" id="searchInfo" aria-live="polite">
+                    Mostrando {{ productos|length }} productos.
+                </div>
+            </section>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Referencia</th>
+                            <th>Precio</th>
+                            <th>Disponibilidad</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="productRows">
+                        {% for producto in productos %}
+                            <tr
+                                class="product-row"
+                                data-search="{{ (producto.nombre ~ ' ' ~ producto.referencia ~ ' ' ~ producto.categoria)|lower }}"
+                            >
+                                <td>
+                                    <div class="product">
+                                        {% if producto.foto %}
+                                            <img
+                                                src="{{ producto.foto }}"
+                                                alt="{{ producto.nombre }}"
+                                                loading="lazy"
+                                            >
+                                        {% else %}
+                                            <div class="placeholder">
+                                                {{ producto.emoji or "🍽️" }}
+                                            </div>
+                                        {% endif %}
+
+                                        <div>
+                                            <strong>{{ producto.nombre }}</strong><br>
+                                            <span class="muted">
+                                                {{ producto.categoria }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td>{{ producto.referencia }}</td>
+
+                                <td>
+                                    ${{ "{:,.0f}".format(producto.precio|float) }}
+                                </td>
+
+                                <td>
+                                    {% if producto.disponible %}
+                                        <span class="status">Disponible</span>
+                                    {% else %}
+                                        <span class="status off">No disponible</span>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    <div class="actions">
+                                        <a
+                                            class="button secondary"
+                                            href="{{ url_for('admin_producto_editar', producto_id=producto.id) }}"
+                                        >
+                                            Editar
+                                        </a>
+
+                                        <form
+                                            method="POST"
+                                            action="{{ url_for('admin_producto_disponibilidad', producto_id=producto.id) }}"
+                                        >
+                                            <input
+                                                type="hidden"
+                                                name="csrf_token"
+                                                value="{{ csrf_token() }}"
+                                            >
+
+                                            <button class="outline" type="submit">
+                                                {% if producto.disponible %}
+                                                    Pausar
+                                                {% else %}
+                                                    Activar
+                                                {% endif %}
+                                            </button>
+                                        </form>
+
+                                        <form
+                                            method="POST"
+                                            action="{{ url_for('admin_producto_eliminar', producto_id=producto.id) }}"
+                                            onsubmit="return confirm('¿Seguro que quieres eliminar este producto? Esta acción no se puede deshacer.');"
+                                        >
+                                            <input
+                                                type="hidden"
+                                                name="csrf_token"
+                                                value="{{ csrf_token() }}"
+                                            >
+
+                                            <button class="danger" type="submit">
+                                                Eliminar
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="no-results" id="noResults">
+                No encontramos productos que coincidan con tu búsqueda.
+            </div>
+
+        {% else %}
+            {% if error_carga %}
+                <p class="empty-message">
+                    No se pudo cargar la lista. Comprueba la conexión
+                    con Supabase y revisa la terminal de PyCharm.
+                </p>
+            {% else %}
+                <p class="empty-message">
+                    No hay productos para mostrar. Puedes añadir uno
+                    con el botón «Nuevo producto».
+                </p>
+            {% endif %}
+        {% endif %}
+    </main>
+
+    <script>
+        const searchInput = document.getElementById("adminSearch");
+        const productRows = Array.from(
+            document.querySelectorAll(".product-row")
+        );
+        const searchInfo = document.getElementById("searchInfo");
+        const noResults = document.getElementById("noResults");
+
+        if (searchInput) {
+            function searchProducts() {
+                const query = searchInput.value
+                    .trim()
+                    .toLocaleLowerCase("es");
+
+                let visibleCount = 0;
+
+                productRows.forEach((row) => {
+                    const text = (
+                        row.dataset.search || ""
+                    ).toLocaleLowerCase("es");
+
+                    const matches = text.includes(query);
+
+                    row.style.display = matches ? "" : "none";
+
+                    if (matches) {
+                        visibleCount++;
+                    }
+                });
+
+                if (searchInfo) {
+                    searchInfo.textContent =
+                        `Mostrando ${visibleCount} de ${productRows.length} productos.`;
+                }
+
+                if (noResults) {
+                    noResults.style.display =
+                        visibleCount === 0 ? "block" : "none";
+                }
+            }
+
+            searchInput.addEventListener("input", searchProducts);
+        }
+    </script>
+</body>
+</html>

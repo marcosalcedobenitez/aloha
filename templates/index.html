@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#FFC928">
+    <title>Aloha | Menú</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header class="topbar">
+    <a class="brand" href="/">
+        <img
+            src="{{ url_for('static', filename='logo.jpeg') }}"
+            alt="Logo de Aloha"
+            class="brand-logo"
+        >
+        <span>Aloha<span class="brand-dot">.</span></span>
+    </a>
+
+    <a class="cart-shortcut" href="#pedido">
+        <span>🛒 Mi pedido</span>
+        <span class="cart-count" id="cart-count">0</span>
+    </a>
+</header>
+
+<section class="hero">
+    <div class="hero-content">
+        <span class="eyebrow">SABOR QUE ENAMORA</span>
+        <h1>Tu antojo,<br>nuestra <span class="accent">pasión.</span></h1>
+        <p>Descubre tu próximo favorito y disfruta cada bocado.</p>
+        <a href="#menu" class="primary-button">Ver menú ↓</a>
+    </div>
+
+ <div class="hero-art">
+    <img
+        src="{{ url_for('static', filename='logo.jpeg') }}"
+        alt="Logo de Aloha"
+        class="hero-logo"
+    >
+</div>
+    </div>
+</section>
+
+<main>
+    <section class="menu-section" id="menu">
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">HECHO PARA TI</span>
+                <h2>Nuestro menú</h2>
+            </div>
+            <p>Encuentra algo delicioso.</p>
+        </div>
+
+        <label class="search-box">
+            <span aria-hidden="true">⌕</span>
+            <input
+                type="search"
+                id="search"
+                placeholder="Buscar productos..."
+                autocomplete="off"
+            >
+        </label>
+
+        <div class="categories">
+            <button
+                type="button"
+                class="category active"
+                data-category="destacados"
+            >
+                ⭐ Productos destacados
+            </button>
+
+            <button
+                type="button"
+                class="category"
+                data-category="combos"
+            >
+                🍟 Combos
+            </button>
+
+            {% for categoria in categorias %}
+            <button
+                type="button"
+                class="category"
+                data-category="{{ categoria }}"
+            >
+                {{ categoria }}
+            </button>
+            {% endfor %}
+        </div>
+
+        {% if error_productos %}
+        <p class="empty-results">
+            No pudimos cargar el menú. Intenta actualizar la página.
+        </p>
+        {% endif %}
+
+        <div class="product-grid" id="product-grid">
+            {% for producto in productos %}
+            <article
+                class="product-card"
+                data-id="{{ producto.id }}"
+                data-category="{{ producto.categoria }}"
+                data-name="{{ producto.nombre | lower }}"
+            >
+                <div class="product-visual">
+                    {% if producto.foto %}
+                    <img
+                        src="{{ producto.foto }}"
+                        alt="{{ producto.nombre }}"
+                        class="product-image"
+                        loading="lazy"
+                        onerror="this.style.display='none'; this.nextElementSibling.hidden=false;"
+                    >
+                    {% endif %}
+
+                    <span
+                        class="product-emoji"
+                        aria-hidden="true"
+                        {% if producto.foto %}hidden{% endif %}
+                    >{{ producto.emoji }}</span>
+
+                    {% if producto.destacado %}
+                    <span class="featured-badge">⭐ Destacado</span>
+                    {% endif %}
+
+                    {% if producto.categoria | lower | trim == 'combos' %}
+                    <span class="combo-badge">🍟 Combo</span>
+                    {% endif %}
+
+                    {% if not producto.disponible %}
+                    <span class="sold-out">Agotado</span>
+                    {% endif %}
+                </div>
+
+                <div class="product-info">
+                    <span class="product-category">
+                        {{ producto.categoria }}
+                    </span>
+
+                    <h3>{{ producto.nombre }}</h3>
+
+                    <p class="product-description">
+                        {{ producto.descripcion or "Una opción deliciosa para disfrutar." }}
+                    </p>
+
+                    <div class="product-bottom">
+                        <div>
+                            <strong class="product-price">
+                                ${{ "{:,.0f}".format(producto.precio | float).replace(",", ".") }}
+                            </strong>
+                            <small>Ref.: {{ producto.referencia }}</small>
+                        </div>
+
+                        {% if producto.disponible %}
+                        <button
+                            type="button"
+                            class="add-button"
+                            data-add="{{ producto.id }}"
+                            aria-label="Añadir {{ producto.nombre }} al pedido"
+                        >+</button>
+                        {% else %}
+                        <button
+                            type="button"
+                            class="add-button"
+                            disabled
+                            aria-label="Producto agotado"
+                        >+</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+
+        <p class="empty-results" id="empty-results" hidden>
+            No encontramos productos con esa búsqueda.
+        </p>
+    </section>
+
+    <section class="order-section" id="pedido">
+        <div class="order-heading">
+            <div>
+                <span class="eyebrow">CASI LISTO</span>
+                <h2>Tu pedido</h2>
+            </div>
+
+            <button type="button" class="text-button" id="clear-cart">
+                Vaciar pedido
+            </button>
+        </div>
+
+        <div class="cart-items" id="cart-items">
+            <p class="cart-empty">
+                Tu carrito está vacío. ¡Elige algo del menú!
+            </p>
+        </div>
+
+        <label class="notes-label" for="order-notes">
+            Observaciones generales
+        </label>
+
+        <textarea
+            id="order-notes"
+            rows="3"
+            placeholder="Ej.: sin cebolla, salsa aparte..."
+        ></textarea>
+
+        <div class="total-row">
+            <span>Total del pedido</span>
+            <strong id="cart-total">$0</strong>
+        </div>
+
+        <button type="button" class="whatsapp-button" id="whatsapp-order">
+            <span aria-hidden="true">◉</span>
+            Continuar por WhatsApp
+        </button>
+
+        <p class="order-disclaimer">
+            Tu pedido se prepara una vez confirmado con el negocio.
+        </p>
+    </section>
+</main>
+
+<footer class="footer">
+  <a class="brand footer-brand" href="/">
+    <img
+        src="{{ url_for('static', filename='logo.jpeg') }}"
+        alt="Logo de Aloha"
+        class="brand-logo"
+    >
+    <span>Aloha<span class="brand-dot">.</span></span>
+</a>
+    <p>Gracias por elegirnos. ❤️</p>
+    <small>© {{ now().year if now is defined else 2026 }} Aloha</small>
+</footer>
+
+<script>
+    const productos = {{ productos | tojson }};
+</script>
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+
+</body>
+</html>
